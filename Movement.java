@@ -10,25 +10,60 @@
 import java.util.*;
 
 public abstract class Movement {
-    public abstract ArrayList<Integer> GetMoves(int source);
+
+    // This method returns a list of possible moves according to movement logic
+    public abstract void CalculateMoves();
     public abstract void OtherSideToMove();
 
 }
 
 class ChessMovement extends Movement{
-    ArrayList<Integer> movelist;
-    int[] knight = {6, 10, 15, 17, -6, -10, -15, -17};
-    String tomove, opponent;
-    int source, curr, dest, x, i;
+    private ArrayList<Integer> movelist;
+    private int[] knightmov = {6, 10, 15, 17, -6, -10, -15, -17};
+    private String tomove, opponent;
+    private int source, curr, dest, x, i;
+    private boolean stop;
+
 
     @Override
-    public ArrayList<Integer> GetMoves(int source){
-        ArrayList<Integer> illegal = new ArrayList<Integer>();
+    public void CalculateMoves(){
+        if(tomove.equals("w")){
+            for(Piece e : BoardData.getWhite()){
+                if(e.getActive()){
+                    e.setMoveset(GetMoves(e.getPosition()));
+                }
+            }
+            for(Piece e : BoardData.getBlack()){
+                e.setMoveset(null);
+            }
+        } else {
+            for(Piece e : BoardData.getBlack()){
+                if(e.getActive()){
+                    e.setMoveset(GetMoves(e.getPosition()));
+                }
+            }
+            for(Piece e : BoardData.getWhite()){
+                e.setMoveset(null);
+            }
+        }
+        if(IsCheckmate()){
+            System.out.println("Checkmate!");
+            System.out.println(opponent);
+        }
+    }
+
+
+    private ArrayList<Integer> GetMoves(int source){
         movelist = new ArrayList<Integer>();
         this.source = source;
         opponent = getOpponent(source);
-        if(!BoardData.AllSquares[source].emptySquare() && BoardData.AllSquares[source].getSide().equals(tomove)){
-            switch(BoardData.AllSquares[source].getType()){
+
+        PieceGUI square = BoardData.get(source);
+        Piece piece = square.getPiece();
+
+
+        if(!square.emptySquare() && piece.getSide().equals(tomove)){
+            switch(BoardData.get(source).getPiece().getType()){
             case "P": PawnMove();
             break;
             case "B": BishopMove();
@@ -44,24 +79,8 @@ class ChessMovement extends Movement{
             }
         }
 
-        BoardData.AllSquares[source].Deactivate();
-        System.out.println(movelist);
-        for(int e : movelist){
-            BoardData.AllSquares[e].Activate();
-            if(isAttacked(BoardData.kingpos(tomove))){
-                System.out.println("illegal found!");
-                illegal.add(e);
-            }
-            x = source % 8;
-            System.out.println("Check!");
-            BoardData.AllSquares[e].Deactivate();
-        }
-        BoardData.AllSquares[source].Activate();
-        movelist.removeAll(illegal);
+        FilterOutIllegal();
 
-        System.out.println(movelist);
-        System.out.println(illegal);
-        System.out.println();
         return movelist;
     }
     public void WhiteToMove(){
@@ -78,6 +97,50 @@ class ChessMovement extends Movement{
             tomove = "w";
         }
     }
+
+    // Illegal moves are those that leave the king in check
+
+    private void FilterOutIllegal(){
+        ArrayList<Integer> illegal = new ArrayList<Integer>();
+        PieceGUI DSquare;
+        PieceGUI SrSquare = BoardData.get(source);
+
+
+        for(int e : movelist){
+            DSquare = BoardData.get(e);
+            SrSquare.getPiece().setPosition(e);
+            SrSquare.setVisible(false);
+            DSquare.SetSimPiece(SrSquare.getPiece());
+        
+            if(isAttacked(BoardData.getKingPos(tomove))){
+                illegal.add(e);
+            }
+            DSquare.RemoveSimPiece();
+            SrSquare.getPiece().setPosition(source);
+            SrSquare.setVisible(true);
+        }
+        movelist.removeAll(illegal);
+    }
+    private boolean IsCheckmate(){
+        ArrayList<Integer> list;
+        if(tomove.equals("w")){
+            for(Piece e : BoardData.getWhite()){
+                list = e.getMoveset();
+                if(list != null && list.size() > 0){
+                    return false;
+                }
+            }
+        } else {
+            for(Piece e : BoardData.getBlack()){
+                list = e.getMoveset();
+                if(list != null && list.size() > 0){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     private void BishopMove(){
         movelist.addAll(CreateList(7,"NW"));
         movelist.addAll(CreateList(7,"NE"));
@@ -106,16 +169,14 @@ class ChessMovement extends Movement{
     } 
     private void KnightMove(){
         i = 0;
-        for(int i = 0; i < 8; i++){
-            NM();
-            if (dest != 64){
-                movelist.addAll(CreateList(1,"X"));
-            }
+        while(i < 8){
+            movelist.addAll(CreateList(1,"NM"));
         }
     }
     private void PawnMove(){
+        Piece piece = BoardData.get(source).getPiece();
         if(tomove.equals("w")){
-            if(!BoardData.AllSquares[source].hasMoved()){
+            if(!piece.Moved()){
                 movelist.addAll(CreateList(2,"UP"));
             } else {
                 movelist.addAll(CreateList(1,"UP"));
@@ -123,7 +184,7 @@ class ChessMovement extends Movement{
             movelist.addAll(CreateList(1,"NE"));
             movelist.addAll(CreateList(1,"NW"));
         } else {
-            if(!BoardData.AllSquares[source].hasMoved()){
+            if(!piece.Moved()){
                 movelist.addAll(CreateList(2,"DOWN"));
             } else {
                 movelist.addAll(CreateList(1,"DOWN"));
@@ -154,19 +215,17 @@ class ChessMovement extends Movement{
     }
     */
 
-
+    // Check if atk square is attacked by a piece
     private boolean isAttacked(int atk){
         ArrayList<String> types = new ArrayList<String>();
-        System.out.println(atk);
-        System.out.println();
         types.add("R");
         types.add("Q");
-        /*
+
         if(isAttacking(7,"UP",types, atk) || isAttacking(7,"DOWN",types, atk) || 
            isAttacking(7,"RIGHT",types, atk) || isAttacking(7,"LEFT",types, atk)){
                return true;
            }
-        */
+        
         types.remove("R");
         types.add("B");
         if(isAttacking(7,"NW",types, atk) || isAttacking(7,"NE",types, atk) || 
@@ -175,16 +234,18 @@ class ChessMovement extends Movement{
         }
         types.remove("B");
         types.remove("Q");
+
         /*
         types.add("N");
-        
+
         if(isAttacking(7,"NM",types)){
             return true;
         }
-        */
+
         types.remove("N");
+        */
         types.add("P");
-        /*
+    
         if(tomove.equals("w")){
             if(isAttacking(1,"NW",types, atk) || isAttacking(1,"NE",types, atk)){
                 return true;
@@ -194,15 +255,18 @@ class ChessMovement extends Movement{
                 return true;
             }
         }
-        */
         return false;
     }
+
+
+// Movement 
+
 
     private void UP(){
         dest -= 8;
         curr = dest;
         if (dest < 0){
-            dest = 64;
+            stop = true;
         }
     }
 
@@ -210,7 +274,7 @@ class ChessMovement extends Movement{
         dest += 8;
         curr = dest;
         if (dest > 63){
-            dest = 64;
+            stop = true;
         }
     }
 
@@ -219,7 +283,7 @@ class ChessMovement extends Movement{
         x -= 1;
         curr = dest;
         if (x == -1){
-            dest = 64;
+            stop = true;
         }
     }
 
@@ -228,7 +292,7 @@ class ChessMovement extends Movement{
         x += 1;
         curr = dest;
         if (x == 8){
-            dest = 64;
+            stop = true;
         }
     }
 
@@ -237,7 +301,7 @@ class ChessMovement extends Movement{
         x += 1;
         curr = dest;
         if(x > 7 || dest < 0){
-            dest = 64;
+            stop = true;
         }
     }
 
@@ -246,7 +310,7 @@ class ChessMovement extends Movement{
         x -= 1;
         curr = dest;
         if(x < 0 || dest < 0){
-            dest = 64;
+            stop = true;
         }
     }
 
@@ -255,7 +319,7 @@ class ChessMovement extends Movement{
         x += 1;
         curr = dest;
         if(x > 7 || dest > 63){
-            dest = 64;
+            stop = true;
         }
     }
 
@@ -264,25 +328,25 @@ class ChessMovement extends Movement{
         x -= 1;
         curr = dest;
         if(x < 0 || dest > 63){
-            dest = 64;
+            stop = true;
         }
     }
 
     private void NM(){
-        dest = 0;
-        curr = source + knight[i];
+        curr = source + knightmov[i];
         if(curr < 0 || curr > 63 || Math.abs(((curr % 8) - x)) > 2){
-            dest = 64;
+            stop = true;
         }
         i++;
     }
-
+    
     private ArrayList<Integer> CreateList(int len, String fun){
         ArrayList<Integer> list = new ArrayList<Integer>();
         x = source % 8;
-        int j = 0;
+        stop = false;
         dest = source;
-        while(true && j < len){
+        int j = 0;
+        while(j < len){
             switch(fun){
             case "UP"    : UP();
             break;
@@ -303,16 +367,15 @@ class ChessMovement extends Movement{
             case "NM"    : NM();
             break;
             }
-            System.out.println("new curr");
-            System.out.println(curr);
-            if(dest == 64){
+
+            if(stop){
                 break;
             }
-            else if(BoardData.AllSquares[curr].emptySquare()){
+            else if(BoardData.get(curr).emptySquare()){
                 list.add(curr);
                 j++;
             }
-            else if(BoardData.AllSquares[curr].getSide().equals(opponent)){
+            else if(BoardData.get(curr).getPiece().getSide().equals(opponent)){
                 list.add(curr);
                 break;
             }
@@ -323,15 +386,14 @@ class ChessMovement extends Movement{
         return list;
     }
 
+
+    // Check if types are attacking atk
     private boolean isAttacking(int len, String fun, ArrayList<String> types, int atk){
+        stop = false;
         x = atk % 8;
         int j = 0;
         dest = atk;
-        System.out.println(fun);
-        while(true && j < len){
-            System.out.print("Iter : ");
-            System.out.print(i);
-            System.out.println();
+        while(j < len){
             switch(fun){
                 case "UP" :  UP();
                 break;
@@ -352,30 +414,23 @@ class ChessMovement extends Movement{
                 case "NM"    : NM();
                 break;
             }
-            System.out.println(curr);
-            if(dest == 64){
-                return false;
-            } 
-            else if(BoardData.AllSquares[curr].emptySquare()&&BoardData.AllSquares[curr].isActive()){
+
+            if(stop){
                 return false;
             }
-            else if(!BoardData.AllSquares[curr].isActive() || (BoardData.AllSquares[curr].emptySquare())){
+            else if(BoardData.get(curr).hasSimPiece()){
+                return false;
+            }
+            else if(BoardData.get(curr).emptySquare() || !BoardData.get(curr).getVisible()){
                 j++;
-                System.out.println("Inactive");
             }
-            else if(BoardData.AllSquares[curr].getSide().equals(opponent)){
-                System.out.println("Opponent");
-                System.out.println(types);
-                System.out.println(BoardData.AllSquares[curr].getType());
-                if(types.contains(BoardData.AllSquares[curr].getType())){
-                    System.out.println("Right type");
+            else if(BoardData.get(curr).getPiece().getSide().equals(opponent)){
+                if(types.contains(BoardData.get(curr).getPiece().getType())){
                     return true;
                 } else {
-                    System.out.println("Wrong type");
                     return false;
                 }
-            }
-            else {
+            } else {
                 return false;
             }
         }
@@ -383,24 +438,33 @@ class ChessMovement extends Movement{
     }
 
 
-
     private String getOpponent(int source){
         String opponent = "w";
-        if(BoardData.AllSquares[source].getSide().equals("w")){
+        if(BoardData.get(source).getPiece().getSide().equals("w")){
             opponent = "b";
         }
         return opponent;
     }
 }
 class EditorMovement extends Movement{
-    @Override
-    public ArrayList<Integer> GetMoves(int source){
-        ArrayList<Integer> list = new ArrayList<Integer>();
+
+    private ArrayList<Integer> CreateList(int j){
+        ArrayList<Integer> m = new ArrayList<Integer>();
         for(int i=0; i < 64; i++){
-            list.add(i);
+            m.add(i);
         }
-        list.remove(source);
-        return list;
+        m.remove(j);
+        return m;
+    }
+
+    @Override
+    public void CalculateMoves(){
+        for(Piece e : BoardData.getWhite()){
+            e.setMoveset(CreateList(e.getPosition()));
+            }
+        for(Piece e : BoardData.getBlack()){
+            e.setMoveset(CreateList(e.getPosition()));
+        }
     }
     @Override
     public void OtherSideToMove(){};

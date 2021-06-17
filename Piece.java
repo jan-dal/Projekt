@@ -1,68 +1,22 @@
-import javax.swing.*;
-import java.awt.*;
-// P - Pawn
-// B - Bishop
-// N - Knight
-// R - Rook
-// Q - Queen
-// K - King
+import java.util.*;
 
-
-public class Piece extends JLabel{
+public class Piece implements Comparable<Piece>{
     String Type, Side;
-    boolean active, moved;
+    ArrayList<Integer> moveset;
+    int Position, Value;
+    boolean Moved, active;
 
-    public Piece(String Type, String Side){
-        this.Type = Type;
-        this.Side = Side;
+    public Piece(String type, String side, int position, boolean lasttomove, boolean moved){
+        Type = type;
+        Side = side;
+        Position = position;
         active = true;
-        moved = false;
-        this.setOpaque(false);
-        this.setIcon(new ImageIcon("img/Chess_" + Type + Side + ".png"));
-        this.setHorizontalAlignment(JLabel.CENTER);
-        this.setVerticalAlignment(JLabel.CENTER);
-    }
-    public Piece(){
-    // For a future piece
-        Type = null;
-        Side = null;
-        active = false;
-        moved = false;
-        this.setOpaque(false);
-        this.setHorizontalAlignment(JLabel.CENTER);
-        this.setVerticalAlignment(JLabel.CENTER);
-    }
-    public void SetPiece(String Type, String Side){
-        this.Type = Type;
-        this.Side = Side;
-        moved = true;
-        active = true;
-        this.setOpaque(false);
-        this.setIcon(new ImageIcon("img/Chess_" + Type + Side + ".png"));
-        this.setHorizontalAlignment(JLabel.CENTER);
-        this.setVerticalAlignment(JLabel.CENTER);
-    }
+        moveset = null;
+        Moved = moved;
+        giveValue();
+    }  
 
-    public void Moved(){
-        moved = true;
-    }
-
-    public boolean hasMoved(){
-        return moved;
-    }
-
-    public boolean isActive(){
-        return active;
-    }
-
-    public void Activate(){
-        active = true;
-    }
-
-    public void Deactivate(){
-        active = false;
-    }
-
+// Getters
     public String getType(){
         return Type;
     }
@@ -70,46 +24,74 @@ public class Piece extends JLabel{
     public String getSide(){
         return Side;
     }
-
-    public void RemovePiece(){
-        this.setIcon(null);
-        this.Type = null;
-        this.Side = null;
-        active = false;
-        moved = false;
-        repaint();
+    
+    public int getValue(){
+        return Value;
     }
 
-    public boolean emptySquare(){
-        return Type == null;
+    public int getPosition(){
+        return Position;
     }
 
-    public void AttackedPiece(){
-        this.setOpaque(true);
-        setBackground(new Color(188,75,81)); //Red
-        repaint();
-    }
-    public void MovingPossible(){
-        this.setOpaque(true);
-        setBackground(new Color(255,255,153)); //Yellow
-        repaint();
+    public boolean getActive(){
+        return active;
     }
 
-    public void SourceSquare(){
-        this.setOpaque(true);
-        setBackground(new Color(255,255,112)); //Faint 
-        repaint();
+    public boolean Moved(){
+        return Moved;
     }
 
-    public void CurrentSquare(){
-        this.setOpaque(true);
-        setBackground(new Color(255,255,51)); // Strong yellow
-        repaint();
+    public ArrayList<Integer> getMoveset(){
+        return moveset;
     }
 
-    public void NeutralSquare(){
-        this.setOpaque(false);
-        repaint();
+// Setters
+    public void setSide(String side){
+        Side = side;
     }
 
+    public void setMoved(boolean x){
+        Moved = x;
+    }
+
+    public void setPosition(int pos){
+        Position = pos;
+    }
+
+    public void setMoveset(ArrayList<Integer> l){
+        moveset = l;
+    }
+
+    public void setActive(boolean x){
+        active = x;
+    }
+
+
+    @Override
+    public int compareTo(Piece o) {
+        if(Value > o.getValue()){
+            return -1;
+        } else if(Value == o.getValue()){
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+    private void giveValue(){
+        switch(Type){
+            case "P" : Value = 1;
+            break;
+            case "N" : Value = 3;
+            break;
+            case "B" : Value = 3;
+            break;
+            case "R" : Value = 5;
+            break;
+            case "Q" : Value = 9;
+            break;
+            case "K" : Value = 100;
+            break;
+        }
+    }
 }

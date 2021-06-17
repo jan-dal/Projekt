@@ -36,15 +36,11 @@ public class InformationGUI extends JPanel{
 
 
     }
-    public void StartTimer(){
-        timer1.setTimer();
-        timer2.setTimer();
-        timer1.startTimer();
-        timer2.startTimer();
+    public TimerGUI getTimer1(){
+        return timer1;
     }
-    public void StopTimer(){
-        timer1.resetTimer();
-        timer2.resetTimer();
+    public TimerGUI getTimer2(){
+        return timer2;
     }
 
 }

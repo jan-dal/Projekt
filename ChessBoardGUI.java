@@ -1,20 +1,10 @@
 // Shows pieces on a chess BoardData
 import java.awt.*;
-import java.util.*;
 import javax.swing.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseAdapter;
 
 public class ChessBoardGUI extends JPanel{
-    Image chessBoardData;
-    ImageGUI grid;
-    Point click, loc;
-    ArrayList<Integer> moveset;
-    // Only testing
-    Movement move;
-    int zorder;
 
-    public ChessBoardGUI(){
+    public ChessBoardGUI(MovementControl m){
         // Setup chessBoardData and sidebars images
         //this.setMinimumSize(new Dimension(800, 800));
         this.setPreferredSize(new Dimension(800, 800));
@@ -40,123 +30,26 @@ public class ChessBoardGUI extends JPanel{
 
         contentpanel.add(sidebar);
 
-        setupPieces(contentpanel);
+        setupPieces(contentpanel, m);
     }
 
-    private void setupPieces(JPanel contentpanel){ 
+    private void setupPieces(JPanel contentpanel, MovementControl m){ 
         // Set up grid for pieces
 
-        grid = new ImageGUI("img/chessboard.png");
+        ImageGUI grid = new ImageGUI("img/chessboard.png");
         grid.setLayout(new GridLayout(8,8,0,0));
 
+        m.setGrid(grid);
 
-        MouseListener eventlistener = new MouseListener();
 
-        for(Piece e : BoardData.AllSquares){
+        for(PieceGUI e : BoardData.getChessboard()){
         // Add mouse listeners
-            e.addMouseListener(eventlistener);
-            e.addMouseMotionListener(eventlistener);
+            e.addMouseListener(m);
+            e.addMouseMotionListener(m);
             // Populate grid with pieces
             grid.add(e);
         }
 
         contentpanel.add(grid);
-    }
-
-    public void SetMovementlogic(Movement move){
-        this.move = move;
-    }
-
-    private void movePiece(Piece piece, MouseEvent e){
-
-        // Piece move piece to location if legal && ingame else set back
-        // Update BoardData 
-        if(piece.getType() != null){
-            int thisX = piece.getLocation().x;
-            int thisY = piece.getLocation().y;
-    
-            int xMoved = (thisX + e.getX()) - (thisX + click.x);
-            int yMoved = (thisY + e.getY()) - (thisY + click.y);
-    
-            int X = thisX + xMoved;
-            int Y = thisY + yMoved; 
-            piece.setLocation(X, Y);
-
-            piece.repaint();
-        }
-    }
-
-    private void placePiece(Piece piece){
-        if(moveset.contains(getcell(grid.getMousePosition()))){
-            BoardData.AllSquares[getcell(grid.getMousePosition())].SetPiece(piece.getType(),piece.getSide());
-            piece.RemovePiece();
-            move.OtherSideToMove();
-        }
-        grid.setComponentZOrder(piece, zorder);
-        piece.setLocation(loc);
-        piece.repaint();
-    }
-
-    private int getcell(Point pos){
-
-        if (pos != null){
-            int gridX = grid.getWidth();
-            int gridY = grid.getHeight();
-            int x = (int)pos.getX();
-            int y = (int)pos.getY();
-    
-            int mx = (int)(x*8 / gridX);
-            int my = (int)(y*8 / gridY);
-    
-            return my*8 + mx;
-        } else {
-            return 0;
-        }
-    }
-
-    // Mouse listener
-    private class MouseListener extends MouseAdapter{
-        @Override
-        public void mouseDragged(MouseEvent e){
-            Piece piece = (Piece)e.getComponent();
-            piece.NeutralSquare();
-            if(!piece.emptySquare()){
-                movePiece(piece, e);
-            }
-        }
-    
-        @Override
-        public void mousePressed(MouseEvent e){
-            // Light up all legal moves for this piece
-            Piece piece = (Piece)e.getComponent();
-            piece.SourceSquare();
-            if(!piece.emptySquare()){
-                zorder = grid.getComponentZOrder(piece);
-                grid.setComponentZOrder(piece, 0);
-            }
-            
-            click = e.getPoint();
-            loc = piece.getLocation();
-            moveset = move.GetMoves(getcell(grid.getMousePosition()));
-            if(move instanceof ChessMovement && moveset.size() > 0){
-                for(int k : moveset){
-                    BoardData.AllSquares[k].MovingPossible();
-                }
-            }
-        }
-
-        @Override
-        public void mouseReleased(MouseEvent e){
-            Piece piece = (Piece)e.getComponent();
-            piece.NeutralSquare();
-            if(!piece.emptySquare()){
-                placePiece(piece);
-            }
-            if(move instanceof ChessMovement && moveset.size() > 0){
-                for(int k : moveset){
-                    BoardData.AllSquares[k].NeutralSquare();
-                }
-            }
-        }
     }
 }

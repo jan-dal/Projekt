@@ -45,14 +45,14 @@ public class TimerGUI extends JPanel implements ActionListener{
         add(Box.createHorizontalGlue());
     }
 
-    public void startTimer(){
+    public void StartTimer(){
         DisplayTime.setEditable(false);
         if(h != 0 || min != 0 || s != 0){
             timer.start();
         }
     }
 
-    public void resetTimer(){
+    public void ResetTimer(){
         timer.stop();
         DisplayTime.setEditable(true);
         DisplayTime.setText("00 : 00 : 00");

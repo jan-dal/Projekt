@@ -3,8 +3,9 @@ import java.awt.event.*;
 // Editor mode <-> Game mode 
 
 public class Game implements ActionListener{
-    boolean ingame;
-    ChessGUI game;
+    private boolean ingame;
+    private ChessGUI game;
+    private MovementControl eventlistener;
     
     public void actionPerformed(ActionEvent e){
         String command = e.getActionCommand();
@@ -30,21 +31,24 @@ public class Game implements ActionListener{
     }
     public Game(){
         BoardData.setBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
-        game = new ChessGUI();
         //Player player1 = new Player("Player1","w");
         //Player player2 = new Player("Player2","b");
-        game.setupGUI(this);
-        game.SetMovementLogic(new EditorMovement());
+        eventlistener = new MovementControl();
+        eventlistener.SetMovementlogic(new EditorMovement());
+        game = new ChessGUI();
+        game.setupGUI(this, eventlistener);
         ingame = false;
     }
     private void StartChessGame(){
         ChessMovement gamemove = new ChessMovement();
         gamemove.WhiteToMove();
-        game.SetMovementLogic(gamemove);
-        game.StartTimer();
+        eventlistener.SetMovementlogic(gamemove);
+        game.getInfobox().getTimer1().StartTimer();
+        game.getInfobox().getTimer2().StartTimer();
     }
     private void StopChessGame(){
-        game.StopTimer();
-        game.SetMovementLogic(new EditorMovement());
+        game.getInfobox().getTimer1().ResetTimer();
+        game.getInfobox().getTimer2().ResetTimer();
+        eventlistener.SetMovementlogic(new EditorMovement());
     }
 }
