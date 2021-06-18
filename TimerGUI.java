@@ -85,7 +85,7 @@ public class TimerGUI extends JPanel implements ActionListener{
         } else {
 
             DisplayTime.setText(getTimeStr(h) + " : " + getTimeStr(min) + " : " + getTimeStr(s));
-            //DisplayTime.repaint();
+            DisplayTime.repaint();
         }
     }
 

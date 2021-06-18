@@ -7,7 +7,7 @@ class ChessGUI{ //ItemListener
     ChessBoardGUI chessboard;
     InformationGUI infobox;
 
-    public void setupGUI(ActionListener a, MovementControl eventlistener){
+    public void setupGUI(ActionListener a){
         // Create the main Frame
         JFrame root = new JFrame("Chess");
         root.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -46,7 +46,7 @@ class ChessGUI{ //ItemListener
         JPanel container = new JPanel();
         container.setLayout(new BoxLayout(container, BoxLayout.X_AXIS));
 
-        chessboard = new ChessBoardGUI(eventlistener);
+        chessboard = new ChessBoardGUI();
         infobox = new InformationGUI();
 
         container.setBackground(new Color(49,46,43));

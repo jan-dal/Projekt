@@ -3,8 +3,9 @@ import java.awt.*;
 import javax.swing.*;
 
 public class ChessBoardGUI extends JPanel{
+    ImageGUI grid;
 
-    public ChessBoardGUI(MovementControl m){
+    public ChessBoardGUI(){
         // Setup chessBoardData and sidebars images
         //this.setMinimumSize(new Dimension(800, 800));
         this.setPreferredSize(new Dimension(800, 800));
@@ -30,26 +31,16 @@ public class ChessBoardGUI extends JPanel{
 
         contentpanel.add(sidebar);
 
-        setupPieces(contentpanel, m);
-    }
-
-    private void setupPieces(JPanel contentpanel, MovementControl m){ 
-        // Set up grid for pieces
-
-        ImageGUI grid = new ImageGUI("img/chessboard.png");
+        grid = new ImageGUI("img/chessboard.png");
         grid.setLayout(new GridLayout(8,8,0,0));
 
-        m.setGrid(grid);
-
-
-        for(PieceGUI e : BoardData.getChessboard()){
-        // Add mouse listeners
-            e.addMouseListener(m);
-            e.addMouseMotionListener(m);
-            // Populate grid with pieces
+        for(SquareGUI e : BoardData.getChessboard()){
             grid.add(e);
         }
 
         contentpanel.add(grid);
+    }
+    public ImageGUI getGrid(){
+        return grid;
     }
 }

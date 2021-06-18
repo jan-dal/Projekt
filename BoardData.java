@@ -3,7 +3,7 @@ import java.util.*;
 
 public class BoardData {
     // 1D array representing the chessboard
-    private static PieceGUI[] Chessboard;
+    private static SquareGUI[] Chessboard;
     // 
     private static ArrayList<Piece> White, Black;
     private static Piece Moved;
@@ -11,7 +11,7 @@ public class BoardData {
     // Initialize chessboard from fen
     public static void setBoard(String fen){
         Piece tempPiece;
-        Chessboard = new PieceGUI[64];
+        Chessboard = new SquareGUI[64];
         White = new ArrayList<Piece>();
         Black = new ArrayList<Piece>();
         
@@ -24,17 +24,15 @@ public class BoardData {
             }
             else if(Character.isLetter(x)){
                 if(Character.isLowerCase(x)){
-                    if(x == 'k'){
-                    }
-                    tempPiece = new Piece(Character.toString(Character.toUpperCase(x)), "b", i, false, false);
-                    Chessboard[i] = new PieceGUI();
+                    tempPiece = CreatePiece(Character.toString(Character.toUpperCase(x)), "b", i);
+                    Chessboard[i] = new SquareGUI();
                     Chessboard[i].SetPiece(tempPiece);
                     Black.add(tempPiece);
                 } else {
                     if(x == 'K'){
                     }
-                    tempPiece = new Piece(Character.toString(x), "w", i, false, false);
-                    Chessboard[i] = new PieceGUI();
+                    tempPiece = CreatePiece(Character.toString(x),"w", i);
+                    Chessboard[i] = new SquareGUI();
                     Chessboard[i].SetPiece(tempPiece);
                     White.add(tempPiece);
                 }
@@ -42,7 +40,7 @@ public class BoardData {
             else if(Character.isDigit(x)){
                 int p = i;
                 for(int k = 0; k < Character.getNumericValue(x); k++){
-                    Chessboard[p+k] = new PieceGUI();
+                    Chessboard[p+k] = new SquareGUI();
                     i++;
                 }
                 i--;
@@ -55,15 +53,15 @@ public class BoardData {
         Collections.sort(Black);
     }
 
-    public static int getKingPos(String side){
+    public static Piece getKing(String side){
         if(side.equals("w")){
-            return White.get(0).getPosition();
+            return White.get(0);
         } else {
-            return Black.get(0).getPosition();
+            return Black.get(0);
         }
     }
 
-    public static PieceGUI get(int cell){
+    public static SquareGUI get(int cell){
         return Chessboard[cell];
     }
 
@@ -75,7 +73,7 @@ public class BoardData {
         return Black;
     }
 
-    public static PieceGUI[] getChessboard(){
+    public static SquareGUI[] getChessboard(){
         return Chessboard;
     }
 
@@ -85,5 +83,19 @@ public class BoardData {
 
     public static Piece getMoved(){
         return Moved;
+    }
+
+    private static Piece CreatePiece(String type, String Side, int pos){
+
+        switch(type){
+            case "P" : return new Pawn(Side, pos, false);
+            case "B" : return new Bishop(Side, pos, false);
+            case "N" : return new Knight(Side, pos, false);
+            case "R" : return new Rook(Side, pos, false);
+            case "Q" : return new Queen(Side, pos, false);
+            case "K" : return new King(Side, pos, false);
+            case "T" : return new Trapper(Side, pos, false);
+            default : return null;
+        }
     }
 }

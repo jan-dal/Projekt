@@ -5,7 +5,6 @@ import java.awt.event.*;
 public class Game implements ActionListener{
     private boolean ingame;
     private ChessGUI game;
-    private MovementControl eventlistener;
     
     public void actionPerformed(ActionEvent e){
         String command = e.getActionCommand();
@@ -33,22 +32,43 @@ public class Game implements ActionListener{
         BoardData.setBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1");
         //Player player1 = new Player("Player1","w");
         //Player player2 = new Player("Player2","b");
-        eventlistener = new MovementControl();
-        eventlistener.SetMovementlogic(new EditorMovement());
         game = new ChessGUI();
-        game.setupGUI(this, eventlistener);
+        game.setupGUI(this);
+        EditorMovementControl k = new EditorMovementControl();
+        k.setGrid(game.getChessboard().getGrid());
+        SetMovementControl(k);
         ingame = false;
     }
     private void StartChessGame(){
-        ChessMovement gamemove = new ChessMovement();
-        gamemove.WhiteToMove();
-        eventlistener.SetMovementlogic(gamemove);
+        GameMovementControl k = new GameMovementControl();
+        k.setToMove("w");
+        k.setGrid(game.getChessboard().getGrid());
+        k.CalculateAllMoves();
+        SetMovementControl(k);
+        game.getInfobox().getTimer1().setTimer();
+        game.getInfobox().getTimer2().setTimer();
         game.getInfobox().getTimer1().StartTimer();
         game.getInfobox().getTimer2().StartTimer();
     }
     private void StopChessGame(){
+        EditorMovementControl k = new EditorMovementControl();
+        k.setGrid(game.getChessboard().getGrid());
         game.getInfobox().getTimer1().ResetTimer();
         game.getInfobox().getTimer2().ResetTimer();
-        eventlistener.SetMovementlogic(new EditorMovement());
+        SetMovementControl(k);
+    }
+
+    private void SetMovementControl(MovementControl m){
+        for(SquareGUI e : BoardData.getChessboard()){
+
+            for(MouseListener i : e.getMouseListeners()){
+                e.removeMouseListener(i);
+            }
+            for(MouseMotionListener i : e.getMouseMotionListeners()){
+                e.removeMouseMotionListener(i);
+            }
+            e.addMouseListener(m);
+            e.addMouseMotionListener(m);
+        }
     }
 }
