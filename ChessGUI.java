@@ -43,6 +43,19 @@ class ChessGUI{ //ItemListener
         menuItem.addActionListener(a);
         menu.add(menuItem);
 
+        // Reload Board
+        menuItem = new JMenuItem("Reload board");
+        menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R,ActionEvent.CTRL_MASK));
+        menuItem.addActionListener(a);
+        menu.add(menuItem);
+
+        //Flip board
+        menuItem = new JMenuItem("Flip board");
+        menuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F,ActionEvent.CTRL_MASK));
+        menuItem.addActionListener(a);
+        menu.add(menuItem);
+
+
         JPanel container = new JPanel();
         container.setLayout(new BoxLayout(container, BoxLayout.X_AXIS));
 

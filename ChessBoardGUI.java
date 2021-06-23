@@ -34,12 +34,18 @@ public class ChessBoardGUI extends JPanel{
         grid = new ImageGUI("img/chessboard.png");
         grid.setLayout(new GridLayout(8,8,0,0));
 
-        for(SquareGUI e : BoardData.getChessboard()){
-            grid.add(e);
-        }
+        LoadPieces();
 
         contentpanel.add(grid);
     }
+    
+    public void LoadPieces(){
+        for(SquareGUI e : BoardData.getChessboard()){
+            grid.add(e);
+        }
+    }
+
+
     public ImageGUI getGrid(){
         return grid;
     }

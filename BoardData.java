@@ -5,18 +5,23 @@ public class BoardData {
     // 1D array representing the chessboard
     private static SquareGUI[] Chessboard;
     // 
+    private static boolean flipped;
     private static ArrayList<Piece> White, Black;
     private static Piece Moved;
 
     // Initialize chessboard from fen
     public static void setBoard(String fen){
+        flipped = false;
+        if(!checkFen(fen)){
+            System.out.println("Bad fen code");
+        } else {
+        
         Piece tempPiece;
         Chessboard = new SquareGUI[64];
         White = new ArrayList<Piece>();
         Black = new ArrayList<Piece>();
         
     // Convert fen string to array
-
         int i = 0;
         for(char x : fen.toCharArray()){
             if(Character.isWhitespace(x)){
@@ -51,6 +56,53 @@ public class BoardData {
         }
         Collections.sort(White);
         Collections.sort(Black);
+        }
+    }
+
+    public static void loadBoard(String fen){
+        if(!checkFen(fen)){
+            System.out.println("Bad fen code");
+        } else {
+        
+        Piece tempPiece;
+        White = new ArrayList<Piece>();
+        Black = new ArrayList<Piece>();
+        
+    // Convert fen string to array
+
+        int i = 0;
+        for(char x : fen.toCharArray()){
+            if(Character.isWhitespace(x)){
+                break;
+            }
+            else if(Character.isLetter(x)){
+                if(Character.isLowerCase(x)){
+                    tempPiece = CreatePiece(Character.toString(Character.toUpperCase(x)), "b", i);
+                    Chessboard[i].SetPiece(tempPiece);
+                    Black.add(tempPiece);
+                } else {
+                    if(x == 'K'){
+                    }
+                    tempPiece = CreatePiece(Character.toString(x),"w", i);
+                    Chessboard[i].SetPiece(tempPiece);
+                    White.add(tempPiece);
+                }
+            }
+            else if(Character.isDigit(x)){
+                int p = i;
+                for(int k = 0; k < Character.getNumericValue(x); k++){
+                    Chessboard[p+k].RemovePiece();
+                    i++;
+                }
+                i--;
+            }
+            if(x != '/'){
+                i++;
+            }
+        }
+        Collections.sort(White);
+        Collections.sort(Black);
+        }
     }
 
     public static Piece getKing(String side){
@@ -85,7 +137,7 @@ public class BoardData {
         return Moved;
     }
 
-    private static Piece CreatePiece(String type, String Side, int pos){
+    public static Piece CreatePiece(String type, String Side, int pos){
 
         switch(type){
             case "P" : return new Pawn(Side, pos, false);
@@ -98,4 +150,111 @@ public class BoardData {
             default : return null;
         }
     }
+
+    public static boolean isFlipped(){
+        return flipped;
+    }
+
+    public static void Remove(Piece e){
+        if(e != null){
+            if(e.getSide().equals("w")){
+                White.remove(e);
+            } else {
+                Black.remove(e);
+            }
+        }
+    }
+
+    public static void Add(Piece e){
+        if(e.getSide().equals("w")){
+            White.add(e);
+            Collections.sort(White);
+        } else {
+            Black.add(e);
+            Collections.sort(Black);
+        }
+    }
+
+    private static boolean checkFen(String fen){
+        int len = 0;
+        int c = 0;
+        for(char x : fen.toCharArray()){
+            if(Character.isAlphabetic(x)){
+                len++;
+            } else if(x == '/'){
+                c++;
+            } else if(Character.isDigit(x)){
+                len += Character.getNumericValue(x);
+            } else {
+                break;
+            }
+        }
+        if(len == 64 && c == 7){
+            return true;
+        }
+        return false;
+
+    }
+
+    public static void FlipBoard(){
+        for(SquareGUI e : Chessboard){
+            e.RemovePiece();
+        }
+
+        int rank;
+        int newPos;
+        int newHis;
+        ArrayList<Integer> his;
+
+        for(Piece e : White){
+            if (e.getActive()){
+                rank = (int)e.getPosition()/8;
+                if(!flipped){
+                    newPos = e.getPosition() - (2*rank-7)*8;
+                } else {
+                    newPos = e.getPosition() + (7-2*rank)*8;
+                }
+                his = e.getHistory();
+                e.resetHistory();
+                for(int j : his){
+                    if(!flipped){
+                        newHis = j - (2*rank-7)*8;
+                    } else {
+                        newHis = j + (7-2*rank)*8;
+                    }
+                    e.addHistory(newHis);
+                }
+                e.setPosition(newPos);
+                Chessboard[newPos].SetPiece(e);
+                }
+        }
+
+        for(Piece e : Black){
+            if(e.getActive()){
+                rank = (int)e.getPosition()/8;
+                if(!flipped){
+                    newPos = e.getPosition() + (7-2*rank)*8;
+                    e.setPosition(newPos);
+                } else {
+                    newPos = e.getPosition() - (2*rank-7)*8;
+                    e.setPosition(newPos);
+                }
+                his = e.getHistory();
+                e.resetHistory();
+                for(int j : his){
+                    if(!flipped){
+                        newHis = j - (2*rank-7)*8;
+                    } else {
+                        newHis = j + (7-2*rank)*8;
+                    }
+                    e.addHistory(newHis);
+                }
+                e.setPosition(newPos);
+                Chessboard[newPos].SetPiece(e);
+            }
+        }
+
+        flipped = !flipped;
+    }
+
 }

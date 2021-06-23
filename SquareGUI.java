@@ -92,4 +92,24 @@ public class SquareGUI extends JLabel{
         this.setOpaque(false);
         repaint();
     }
+
+    public boolean isAttacked(String Side, int pos){
+
+        if(Side.equals("w")){
+            for(Piece e : BoardData.getBlack()){
+
+                if(e.getActive() && e.isAttacking(pos)){
+                    return true;
+                }
+            }
+        } else {
+            for(Piece e : BoardData.getWhite()){
+                if(e.getActive() && e.isAttacking(pos)){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 }

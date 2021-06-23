@@ -31,9 +31,6 @@ public class InformationGUI extends JPanel{
         add(timer2);
         add(player2);
 
-        //timer1.startTimer();
-        //timer2.startTimer();
-
 
     }
     public TimerGUI getTimer1(){
@@ -42,5 +39,12 @@ public class InformationGUI extends JPanel{
     public TimerGUI getTimer2(){
         return timer2;
     }
+    public void setPlayer1(String name){
+        player1.setText(name);
+    }
+    public void setPlayer2(String name){
+        player2.setText(name);
+    }
+
 
 }

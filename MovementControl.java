@@ -1,4 +1,6 @@
 import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
 import java.util.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseAdapter;
@@ -9,7 +11,7 @@ public abstract class MovementControl extends MouseAdapter{
     protected int zorder;
 
     // What happens when a piece is placed
-    protected abstract void placePiece(SquareGUI square);
+    protected abstract void placePiece(SquareGUI square, MovPair dest);
     protected void movePiece(SquareGUI square, MouseEvent e){
         // Piece move piece to location if legal && ingame else set back
         // Update BoardData 
@@ -46,9 +48,14 @@ public abstract class MovementControl extends MouseAdapter{
     }
 }
 
-
 class GameMovementControl extends MovementControl{
     String tomove;
+    TimerGUI timer1, timer2;
+    ActionListener listener;
+
+    public void setActionListener(ActionListener l){
+        listener = l;
+    }
 
     public boolean IsCheckmate(){
         if(tomove.equals("w")){
@@ -68,6 +75,12 @@ class GameMovementControl extends MovementControl{
     }
 
     public void CalculateAllMoves(){
+        if(BoardData.get(BoardData.getKing(tomove).getPosition()).isAttacked(tomove, BoardData.getKing(tomove).getPosition())){
+            BoardData.get(BoardData.getKing(tomove).getPosition()).AttackedPiece();
+            ((King)(BoardData.getKing(tomove))).setInCheck(true);
+
+        }
+
         if(tomove.equals("w")){
             for(Piece e : BoardData.getWhite()){
                 if(e.getActive()){
@@ -87,9 +100,18 @@ class GameMovementControl extends MovementControl{
                 e.setMovelist(null);
             }
         }
+
         if(IsCheckmate()){
-            System.out.println("Checkmated!");
-            System.out.println(tomove);
+            if(((King)(BoardData.getKing(tomove))).inCheck()){
+                //Checkmate
+                listener.actionPerformed(new ActionEvent(this, 0, "Stop game"));
+                new GameEndWindow(0);
+            } else {
+                //Stalemate
+                listener.actionPerformed(new ActionEvent(this, 0, "Stop game"));
+                new GameEndWindow(2);
+            }
+            
         }
     }
 
@@ -105,19 +127,29 @@ class GameMovementControl extends MovementControl{
         }
     }
 
+    public void setTimers(TimerGUI t1, TimerGUI t2){
+        timer1 = t1;
+        timer2 = t2;
+    }
 
     @Override
-    public void placePiece(SquareGUI square){
-        int pos = getcell(grid.getMousePosition());
+    public void placePiece(SquareGUI square, MovPair d){
+        int pos = d.getPos();
         Piece source = square.getPiece();
-        SquareGUI dest = BoardData.get(pos);
+        SquareGUI dest = BoardData.get(d.getPos());
 
         BoardData.setMoved(source);
         source.setMoved(true);
         source.setPosition(pos);
+        source.addHistory(pos);
 
-        if(!dest.emptySquare()){
-            dest.getPiece().setActive(false);
+
+
+        if(!d.getSquare().emptySquare()){
+            // Capture Piece
+            d.getSquare().getPiece().setActive(false);
+            d.getSquare().RemovePiece();
+
         }
 
         dest.SetPiece(source);
@@ -126,19 +158,29 @@ class GameMovementControl extends MovementControl{
         
         square.setLocation(loc);
         
+        if(source instanceof Pawn){
+            ((Pawn)(source)).Promotion();
+        }
+
+        if(timer1.isRunning()){
+            timer1.StopTimer();
+            timer2.StartTimer();
+        } else {
+            timer2.StopTimer();
+            timer1.StartTimer();
+        }
+
+
+        KingCheck();
         nextToMove();
         CalculateAllMoves();
 
-        // Other side to move
-        // Calcuate moves in here
-        //move.CalculateMoves();
     }
 
     @Override
     public void mousePressed(MouseEvent e){
         // Light up all legal moves for this piece
         SquareGUI square = (SquareGUI)e.getComponent();
-        ArrayList<Integer> moveset;
         if(square.emptySquare()){
             square.SourceSquare();
         } 
@@ -152,14 +194,9 @@ class GameMovementControl extends MovementControl{
         // Gather information about location of the piece
             click = e.getPoint();
             loc = square.getLocation();
-            moveset = square.getPiece().getMovelist();
 
         // Lightup all squares 
-            if(moveset != null){
-                for(int k : moveset){
-                    BoardData.get(k).MovingPossible();
-                }
-            }
+            ColorSquares(square.getPiece().getMovelist());
         }
     }
 
@@ -172,39 +209,112 @@ class GameMovementControl extends MovementControl{
         }
     }
 
-
     @Override
     public void mouseReleased(MouseEvent e){
         SquareGUI square = (SquareGUI)e.getComponent();
-        ArrayList<Integer> moveset;
+        MovPair dest;
+        ArrayList<MovPair> movelist;
         square.NeutralSquare();
 
         if(!square.emptySquare()){
             grid.setComponentZOrder(square, zorder);
-            moveset = square.getPiece().getMovelist();
-            if(moveset != null && moveset.contains(getcell(grid.getMousePosition()))){
-                placePiece(square);
+            movelist = square.getPiece().getMovelist();
+            dest = legal(movelist, getcell(grid.getMousePosition()));
+            if(dest != null){
+                placePiece(square, dest);
             } else {
                 square.setLocation(loc);
             }
 
-            if(moveset != null){
-                for(int k : moveset){
-                    BoardData.get(k).NeutralSquare();
+            TurnOffSquares(movelist);
+        }
+    }
+
+    private MovPair legal(ArrayList<MovPair> movlist, int pos){
+        if(movlist != null){
+            for(MovPair e : movlist){
+                if(e.getPos() == pos){
+                    return e;
                 }
             }
         }
+        return null;
+    }
+
+    private void TurnOffSquares(ArrayList<MovPair> movelist){
+        
+        if(movelist != null){
+            for(MovPair e : movelist){
+                SquareGUI dest = BoardData.get(e.getPos());
+                dest.NeutralSquare();
+            }
+        }
+    }
+
+    private void ColorSquares(ArrayList<MovPair> movelist){
+        
+        if(movelist != null){
+            for(MovPair e : movelist){
+                SquareGUI pos = e.getSquare();
+                SquareGUI dest = BoardData.get(e.getPos());
+
+                if(pos.emptySquare()){
+                    dest.MovingPossible();
+                }
+                else {
+                    dest.AttackedPiece();
+                }
+            }
+        }
+    }
+
+    private void KingCheck(){
+        King k1 = (King)(BoardData.getKing(tomove));
+        if(BoardData.getMoved().equals(k1) && k1.Moved()){
+            int prevPos = k1.getHistory().get(k1.getHistory().size() - 2);
+            if(k1.getPosition() - prevPos == 2){
+                if((tomove.equals("w") && !BoardData.isFlipped()) || (tomove.equals("b") && BoardData.isFlipped())){
+                    Piece rook = BoardData.get(63).getPiece();
+                    rook.setPosition(61);
+                    BoardData.get(63).RemovePiece();
+                    BoardData.get(61).SetPiece(rook);
+                } else {
+                    Piece rook = BoardData.get(7).getPiece();
+                    rook.setPosition(5);
+                    BoardData.get(7).RemovePiece();
+                    BoardData.get(5).SetPiece(rook);
+                }
+            }
+            else if(k1.getPosition() - prevPos == -2){
+                if((tomove.equals("w") && !BoardData.isFlipped()) || (tomove.equals("b") && BoardData.isFlipped())){
+                    Piece rook = BoardData.get(56).getPiece();
+                    rook.setPosition(59);
+                    BoardData.get(56).RemovePiece();
+                    BoardData.get(59).SetPiece(rook);
+                } else {
+                    Piece rook = BoardData.get(0).getPiece();
+                    rook.setPosition(3);
+                    BoardData.get(0).RemovePiece();
+                    BoardData.get(3).SetPiece(rook);
+                }  
+            }
+        
+        }
+
+
+        
+        if(k1.inCheck()){
+            k1.setInCheck(false);
+        }
+        BoardData.get(k1.getPosition()).NeutralSquare();
     }
 
 }
 
 class EditorMovementControl extends MovementControl{
 
-    //TODO Add right click mouse event
-    //TODO Remove piece enteierly
-
     @Override
-    public void placePiece(SquareGUI square){
+    public void placePiece(SquareGUI square, MovPair d){
         int pos = getcell(grid.getMousePosition());
         Piece source = square.getPiece();
         SquareGUI dest = BoardData.get(pos);
@@ -219,16 +329,27 @@ class EditorMovementControl extends MovementControl{
     public void mousePressed(MouseEvent e){
         // Light up all legal moves for this piece
         SquareGUI square = (SquareGUI)e.getComponent();
-        square.SourceSquare();
-        if(!square.emptySquare()){
 
-            zorder = grid.getComponentZOrder(square);
-            grid.setComponentZOrder(square, 0);
+        if(SwingUtilities.isRightMouseButton(e)){
+            if(square.emptySquare()){
+                new ChoosePieceWindow(getcell(grid.getMousePosition()));
+            } else {
+                BoardData.Remove(square.getPiece());
+                square.RemovePiece();
+            }
+        }
+        else {
+            square.SourceSquare();
+            if(!square.emptySquare()){
 
-        // Gather information about location of the piece
-            click = e.getPoint();
-            loc = square.getLocation();
+                zorder = grid.getComponentZOrder(square);
+                grid.setComponentZOrder(square, 0);
 
+            // Gather information about location of the piece
+                click = e.getPoint();
+                loc = square.getLocation();
+
+            }
         }
     }
 
@@ -247,7 +368,7 @@ class EditorMovementControl extends MovementControl{
         square.NeutralSquare();
         if(!square.emptySquare() && BoardData.get(getcell(grid.getMousePosition())).emptySquare()){
             grid.setComponentZOrder(square, zorder);
-            placePiece(square);
+            placePiece(square, null);
         } else if(!square.emptySquare()){
             grid.setComponentZOrder(square, zorder);
             square.setLocation(loc);

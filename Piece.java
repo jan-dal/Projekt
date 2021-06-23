@@ -3,40 +3,46 @@ import javax.swing.*;
 
 public abstract class Piece implements Comparable<Piece>{
     String Side;
-    ArrayList<Integer> movelist;
+    ArrayList<MovPair> movelist;
+    ArrayList<Integer> posHistory;
     int Position;
     boolean Moved, active;
 
     // Calculates moves for a piece based on movement
-    public abstract ArrayList<Integer> CalculateMoves();
+    public abstract ArrayList<MovPair> CalculateMoves();
     public abstract String getType();
     public abstract int getValue();
     public abstract ImageIcon getIcon();
 
 
     // Create partial list of moves
-    protected ArrayList<Integer> CreateList(int k, PositionGenerator gen){
+    protected ArrayList<MovPair> CreateList(int k, PositionGenerator gen){
 
         // k = 0 - Capture enemy move on empty squares
         // k = 1 - Move only on empty squares
         // k = 2 - Move only when capture
+        // k = 3 - Move only when capturing and the captured piece just moved
 
-        ArrayList<Integer> list = new ArrayList<Integer>();
+        ArrayList<MovPair> list = new ArrayList<MovPair>();
         int curr = gen.next();
     
         while(!gen.END()){
             SquareGUI p = BoardData.get(curr);
             // Is empty or moved
-            if((p.emptySquare() || !p.getVisible()) && k != 2 && !p.hasSimPiece()){
-                list.add(curr);
+            if((p.emptySquare() || !p.getVisible()) && k != 2 && k != 3 && !p.hasSimPiece()){
+                list.add(new MovPair(curr, p));
             }
             // Is opponent
             else if(p.hasSimPiece() || (!p.emptySquare() && p.getPiece().getSide().equals(getOp(Side)))){
                 if(k == 0 || k == 2){
-                    list.add(curr);
+                    list.add(new MovPair(curr, p));
                     gen.endCycle();
-                } 
+                }
                 else if(k == 1) {
+                    gen.endCycle();
+                }
+                else if(k == 3 && BoardData.getMoved().equals(p.getPiece()) && p.getPiece() instanceof Pawn && p.getPiece().getHistory().size() == 2){
+                    list.add(new MovPair(curr, p));
                     gen.endCycle();
                 }
             }
@@ -63,11 +69,12 @@ public abstract class Piece implements Comparable<Piece>{
         }
     }
     public Piece(String side, int position, boolean moved){
-        movelist = new ArrayList<Integer>();
+        movelist = new ArrayList<MovPair>();
         Side = side;
         Position = position;
         active = true;
         Moved = moved;
+        posHistory = new ArrayList<Integer>();
     }  
 
 // Getters
@@ -75,6 +82,10 @@ public abstract class Piece implements Comparable<Piece>{
         return Side;
     }
     
+    public ArrayList<Integer> getHistory(){
+        return posHistory;
+    }
+
     public int getPosition(){
         return Position;
     }
@@ -87,13 +98,21 @@ public abstract class Piece implements Comparable<Piece>{
         return Moved;
     }
 
-    public ArrayList<Integer> getMovelist(){
+    public ArrayList<MovPair> getMovelist(){
         return movelist;
     }
 
 // Setters
     public void setSide(String side){
         Side = side;
+    }
+
+    public void addHistory(int pos){
+        posHistory.add(pos);
+    }
+
+    public void resetHistory(){
+        posHistory = new ArrayList<Integer>();
     }
 
     public void setMoved(boolean x){
@@ -108,7 +127,7 @@ public abstract class Piece implements Comparable<Piece>{
         active = x;
     }
 
-    public void setMovelist(ArrayList<Integer> l){
+    public void setMovelist(ArrayList<MovPair> l){
         movelist = l;
     }
 
@@ -126,28 +145,9 @@ public abstract class Piece implements Comparable<Piece>{
     // Is this piece attacking a given position
     public boolean isAttacking(int pos){
 
-        if(CalculateMoves().contains(pos)){
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    public boolean isAttacked(){
-
-
-        if(Side.equals("w")){
-            for(Piece e : BoardData.getBlack()){
-
-                if(e.getActive() && e.isAttacking(Position)){
-                    return true;
-                }
-            }
-        } else {
-            for(Piece e : BoardData.getWhite()){
-                if(e.getActive() && e.isAttacking(Position)){
-                    return true;
-                }
+        for(MovPair e : CalculateMoves()){
+            if(e.getPos() == pos){
+                return true;
             }
         }
         return false;
@@ -158,23 +158,23 @@ public abstract class Piece implements Comparable<Piece>{
     // after a move from the movelist
     public void FilterOutIllegal(){
         int pos;
-        ArrayList<Integer> illegal = new ArrayList<Integer>();
+        ArrayList<MovPair> illegal = new ArrayList<MovPair>();
         // Destiny square
         SquareGUI DSquare;
         // Source square
         SquareGUI SrSquare = BoardData.get(Position);
 
-        for(int e : movelist){
+        for(MovPair e : movelist){
             pos = Position;
-            DSquare = BoardData.get(e);
-            setPosition(e);
+            DSquare = BoardData.get(e.getPos());
+            setPosition(e.getPos());
             SrSquare.setVisible(false);
             DSquare.SetSimPiece(this);
             if(!DSquare.emptySquare()){
                 DSquare.getPiece().setActive(false);
             }
         
-            if(BoardData.getKing(Side).isAttacked()){
+            if(BoardData.get(BoardData.getKing(Side).getPosition()).isAttacked(Side, BoardData.getKing(Side).getPosition())){
                 illegal.add(e);
             }
 
@@ -185,6 +185,7 @@ public abstract class Piece implements Comparable<Piece>{
             setPosition(pos);
             SrSquare.setVisible(true);
         }
+
         movelist.removeAll(illegal);
     }
 }
@@ -197,7 +198,8 @@ class Pawn extends Piece{
     static int[] passvmovementWs = {2, 0, -8};
     static int[] passvmovementBs = {2, 0, 8};
     static int[] passvmovementB = {1, 0, 8};
-
+    static int[] enpassant = {1, 1, 1, -1};
+    final Object lock = new Object();
     static ImageIcon wicon = new ImageIcon("img/Chess_" + Type + "w.png");
     static ImageIcon bicon = new ImageIcon("img/Chess_" + Type + "b.png");
     static int Value = 1;
@@ -219,20 +221,55 @@ class Pawn extends Piece{
         }
     }
 
+    public void Promotion(){
+        if((!BoardData.isFlipped() && Side.equals("w")) || (BoardData.isFlipped() && Side.equals("b"))){
+            if(Position < 8){
+                new ChoosePieceWindow(Position);
+            }
+        } else {
+            if(Position > 57){
+                new ChoosePieceWindow(Position);
+            }
+        }
+    }
+
+
+    // Special attacking move for pawns on their 5th rank
+    private ArrayList<MovPair> enPessant(){
+        ArrayList<MovPair> list = new ArrayList<MovPair>();
+        if((!BoardData.isFlipped() && Side.equals("w")) || (BoardData.isFlipped() && Side.equals("b"))){
+            if(23 < Position && Position < 32){
+                for(MovPair e : CreateList(3, new PositionGenerator(Position, enpassant))){
+                    list.add(new MovPair(e.getPos() - 8, e.getSquare()));
+                }
+            }
+        } else {
+            if(31 < Position && Position < 40){
+                for(MovPair e : CreateList(3, new PositionGenerator(Position, enpassant))){
+                    list.add(new MovPair(e.getPos() + 8, e.getSquare()));
+                }
+            }
+        }
+        return list;
+    }
+
+
     @Override
-    public ArrayList<Integer> CalculateMoves(){
-        ArrayList<Integer> list = new ArrayList<Integer>();
-        if(Side.equals("w")){
-            if(!Moved){
+    public ArrayList<MovPair> CalculateMoves(){
+        ArrayList<MovPair> list = new ArrayList<MovPair>();
+        if((!BoardData.isFlipped() && Side.equals("w")) || (BoardData.isFlipped() && Side.equals("b"))){
+            if(Position < 56 && Position > 47){
                 list.addAll(CreateList(1 ,new PositionGenerator(Position, passvmovementWs)));
             } else {
+                list.addAll(enPessant());
                 list.addAll(CreateList(1 ,new PositionGenerator(Position, passvmovementW)));
             }
             list.addAll(CreateList(2 ,new PositionGenerator(Position, atkmovementW)));
         } else {
-            if(!Moved){
+            if(Position < 16 && Position > 7){
                 list.addAll(CreateList(1 ,new PositionGenerator(Position, passvmovementBs)));
             } else {
+                list.addAll(enPessant());
                 list.addAll(CreateList(1 ,new PositionGenerator(Position, passvmovementB)));
             }
             list.addAll(CreateList(2 ,new PositionGenerator(Position, atkmovementB)));    
@@ -268,8 +305,8 @@ class Bishop extends Piece{
     }
 
     @Override
-    public ArrayList<Integer> CalculateMoves(){
-        ArrayList<Integer> list = new ArrayList<Integer>();
+    public ArrayList<MovPair> CalculateMoves(){
+        ArrayList<MovPair> list = new ArrayList<MovPair>();
         list.addAll(CreateList(0 ,new PositionGenerator(Position, movement)));
         return list;
     }
@@ -302,8 +339,8 @@ class Rook extends Piece{
         super(side, position, moved);
     }
     @Override
-    public ArrayList<Integer> CalculateMoves(){
-        ArrayList<Integer> list = new ArrayList<Integer>();
+    public ArrayList<MovPair> CalculateMoves(){
+        ArrayList<MovPair> list = new ArrayList<MovPair>();
         list.addAll(CreateList(0 ,new PositionGenerator(Position, movement)));
         return list;
     }
@@ -335,8 +372,8 @@ class Knight extends Piece{
     }
 
     @Override
-    public ArrayList<Integer> CalculateMoves(){
-        ArrayList<Integer> list = new ArrayList<Integer>();
+    public ArrayList<MovPair> CalculateMoves(){
+        ArrayList<MovPair> list = new ArrayList<MovPair>();
         list.addAll(CreateList(0 ,new PositionGenerator(Position, movement)));
         return list;
     }
@@ -365,10 +402,9 @@ class Queen extends Piece{
     public Queen(String side, int position, boolean moved){
         super(side, position, moved);
     }
-
     @Override
-    public ArrayList<Integer> CalculateMoves(){
-        ArrayList<Integer> list = new ArrayList<Integer>();
+    public ArrayList<MovPair> CalculateMoves(){
+        ArrayList<MovPair> list = new ArrayList<MovPair>();
         list.addAll(CreateList(0 ,new PositionGenerator(Position, movement)));
         return list;
     }
@@ -382,6 +418,7 @@ class King extends Piece{
     static ImageIcon wicon = new ImageIcon("img/Chess_" + Type + "w.png");
     static ImageIcon bicon = new ImageIcon("img/Chess_" + Type + "b.png");
     static int Value = 100;
+    private boolean inCheck;
     
     public String getType(){
         return Type;
@@ -399,12 +436,68 @@ class King extends Piece{
     public King(String side, int position, boolean moved){
         super(side, position, moved);
     }
+
     @Override
-    public ArrayList<Integer> CalculateMoves(){
-        ArrayList<Integer> list = new ArrayList<Integer>();
+    public ArrayList<MovPair> CalculateMoves(){
+        ArrayList<MovPair> list = new ArrayList<MovPair>();
         list.addAll(CreateList(0 ,new PositionGenerator(Position, movement)));
         return list;
     } 
+
+    @Override
+    public void updateMovelist() {
+        movelist = CalculateMoves();
+        movelist.addAll(CastleKingside());
+        movelist.addAll(CastleQueenside());
+        FilterOutIllegal();
+    }
+
+    private ArrayList<MovPair> CastleKingside(){
+        ArrayList<MovPair> list = new ArrayList<MovPair>();
+        if((!BoardData.isFlipped() && Side.equals("w")) || (BoardData.isFlipped() && Side.equals("b"))){
+            if(!Moved && !inCheck && BoardData.get(61).emptySquare() && BoardData.get(62).emptySquare() && !BoardData.get(63).emptySquare()){
+                if(!BoardData.get(63).getPiece().Moved() && !BoardData.get(61).isAttacked(Side, 61) && !BoardData.get(62).isAttacked(Side, 62)){
+                    list.add(new MovPair(62, BoardData.get(62)));
+                }
+            }
+        } else {
+            if(!Moved && !inCheck && BoardData.get(5).emptySquare() && BoardData.get(6).emptySquare() && !BoardData.get(7).emptySquare()){
+                if(!BoardData.get(7).getPiece().Moved() && !BoardData.get(5).isAttacked(Side, 5) && !BoardData.get(6).isAttacked(Side, 6)){
+                    list.add(new MovPair(6, BoardData.get(6)));
+                }
+            }
+        }
+
+        return list;
+    }
+
+    private ArrayList<MovPair> CastleQueenside(){
+        ArrayList<MovPair> list = new ArrayList<MovPair>();
+        if((!BoardData.isFlipped() && Side.equals("w")) || (BoardData.isFlipped() && Side.equals("b"))){
+            if(!Moved && !inCheck && BoardData.get(59).emptySquare() && BoardData.get(58).emptySquare() && BoardData.get(57).emptySquare() && !BoardData.get(56).emptySquare()){
+                if(!BoardData.get(56).getPiece().Moved() && !BoardData.get(57).isAttacked(Side, 57) && !BoardData.get(58).isAttacked(Side, 58) && !BoardData.get(59).isAttacked(Side, 59)){
+                    list.add(new MovPair(58, BoardData.get(58)));
+                }
+            }
+        } else {
+            if(!Moved && !inCheck && BoardData.get(1).emptySquare() && BoardData.get(2).emptySquare() && BoardData.get(3).emptySquare() && !BoardData.get(0).emptySquare()){
+                if(!BoardData.get(0).getPiece().Moved() && !BoardData.get(1).isAttacked(Side, 1) && !BoardData.get(2).isAttacked(Side, 2) && !BoardData.get(3).isAttacked(Side, 3)){
+                    list.add(new MovPair(2, BoardData.get(2)));
+                }
+            }
+        }
+
+        return list;
+    }
+
+
+    public void setInCheck(boolean x){
+        inCheck = x;
+    }
+
+    public boolean inCheck(){
+        return inCheck;
+    }
 }
 
 
@@ -434,8 +527,8 @@ class Trapper extends Piece{
     }
 
     @Override
-    public ArrayList<Integer> CalculateMoves(){
-        ArrayList<Integer> list = new ArrayList<Integer>();
+    public ArrayList<MovPair> CalculateMoves(){
+        ArrayList<MovPair> list = new ArrayList<MovPair>();
         list.addAll(CreateList(1 ,new PositionGenerator(Position, movement)));
         return list;
     }

@@ -7,6 +7,7 @@ import java.awt.Font;
 public class TimerGUI extends JPanel implements ActionListener{
     private Timer timer;
     private int h, min, s;
+    private ActionListener listener;
     JFormattedTextField DisplayTime;
 
     public void actionPerformed(ActionEvent e){
@@ -58,6 +59,9 @@ public class TimerGUI extends JPanel implements ActionListener{
         DisplayTime.setText("00 : 00 : 00");
     }
 
+    public boolean isRunning(){
+        return timer.isRunning();
+    }
 
     public void setTimer(){
         timer.stop();
@@ -69,6 +73,9 @@ public class TimerGUI extends JPanel implements ActionListener{
         DisplayTime.setText(getTimeStr(h) + " : " + getTimeStr(min) + " : " + getTimeStr(s));
     }
 
+    public void StopTimer(){
+        timer.stop();
+    }
 
     private void updateTime(){
         s = ((((s - 1) % 60) + 60) % 60);
@@ -81,7 +88,9 @@ public class TimerGUI extends JPanel implements ActionListener{
         }
 
         if (min == 0 && s == 0 && h == 0){
-            timer.stop();  // new GAME END window
+            timer.stop();
+            listener.actionPerformed(new ActionEvent(this, 0, "Stop game"));
+            new GameEndWindow(1);
         } else {
 
             DisplayTime.setText(getTimeStr(h) + " : " + getTimeStr(min) + " : " + getTimeStr(s));
@@ -98,4 +107,8 @@ public class TimerGUI extends JPanel implements ActionListener{
         }
     }
 
+    public void setListener(ActionListener l){
+        listener = l;
+    }
+    
 }
