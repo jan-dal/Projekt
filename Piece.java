@@ -500,7 +500,6 @@ class King extends Piece{
     }
 }
 
-
 // A passive queen
 class Trapper extends Piece{
     static String Type = "T";

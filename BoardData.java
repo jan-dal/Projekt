@@ -201,27 +201,18 @@ public class BoardData {
             e.RemovePiece();
         }
 
-        int rank;
-        int newPos;
-        int newHis;
+        int rank,x,newPos,newHis;
         ArrayList<Integer> his;
 
         for(Piece e : White){
             if (e.getActive()){
                 rank = (int)e.getPosition()/8;
-                if(!flipped){
-                    newPos = e.getPosition() - (2*rank-7)*8;
-                } else {
-                    newPos = e.getPosition() + (7-2*rank)*8;
-                }
+                x = e.getPosition() % 8;
+                newPos = e.getPosition() - ((2*rank-7)*8 + (2*x - 7));
                 his = e.getHistory();
                 e.resetHistory();
                 for(int j : his){
-                    if(!flipped){
-                        newHis = j - (2*rank-7)*8;
-                    } else {
-                        newHis = j + (7-2*rank)*8;
-                    }
+                    newHis = j - ((2*rank-7)*8 + (2*x - 7));
                     e.addHistory(newHis);
                 }
                 e.setPosition(newPos);
@@ -232,21 +223,13 @@ public class BoardData {
         for(Piece e : Black){
             if(e.getActive()){
                 rank = (int)e.getPosition()/8;
-                if(!flipped){
-                    newPos = e.getPosition() + (7-2*rank)*8;
-                    e.setPosition(newPos);
-                } else {
-                    newPos = e.getPosition() - (2*rank-7)*8;
-                    e.setPosition(newPos);
-                }
+                x = e.getPosition() % 8;
+                newPos = e.getPosition() - ((2*rank-7)*8 + (2*x - 7));
+                e.setPosition(newPos);
                 his = e.getHistory();
                 e.resetHistory();
                 for(int j : his){
-                    if(!flipped){
-                        newHis = j - (2*rank-7)*8;
-                    } else {
-                        newHis = j + (7-2*rank)*8;
-                    }
+                    newHis = j - ((2*rank-7)*8 + (2*x - 7));
                     e.addHistory(newHis);
                 }
                 e.setPosition(newPos);
